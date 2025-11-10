@@ -12,7 +12,6 @@ data/raw/
 *.mp4
 *.avi
 
-data/images/
 data/meta/
 
 src/Football_Play_Project.egg-info/
