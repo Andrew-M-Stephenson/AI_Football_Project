@@ -39,3 +39,8 @@ Go back to previous image: B
 Quit early: Q or Esc (it still saves everything you’ve labeled so far to data/meta/positions.json)
 
 ---------------------------------
+
+Download yolov8n.pt
+
+---------------------------------
+
