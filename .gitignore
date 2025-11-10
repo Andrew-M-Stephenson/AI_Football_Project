@@ -1,0 +1,24 @@
+# Ignore virtual environments
+.venv/
+env/
+venv/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore large raw data and video files
+data/raw/
+*.mp4
+*.avi
+
+data/images/
+data/meta/
+
+src/Football_Play_Project.egg-info/
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+yolov8n.pt

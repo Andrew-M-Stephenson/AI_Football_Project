@@ -1,0 +1,9 @@
+# paths relative to repo root
+path: .
+train: data/images/train
+val: data/images/val
+test: data/images/test
+
+# Option A: single class "player"
+names:
+  0: player

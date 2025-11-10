@@ -1,0 +1,23 @@
+# Simple rule templates you’ll expand later
+personnel_groups:
+  "11": { RB: 1, TE: 1, WR: 3 }
+  "12": { RB: 1, TE: 2, WR: 2 }
+  "10": { RB: 1, TE: 0, WR: 4 }
+
+backfields: [under_center, shotgun, pistol]
+
+templates:
+  - name: "11-shotgun-trips-right"
+    personnel: "11"
+    backfield: shotgun
+    strength: right
+    rules:
+      te_side: right          # TE aligned to right of OL
+      trips: right            # 3 WR to right of ball
+  - name: "12-under-center-ace"
+    personnel: "12"
+    backfield: under_center
+    strength: balanced
+    rules:
+      te_count_left: 1
+      te_count_right: 1

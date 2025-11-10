@@ -1,0 +1,12 @@
+paths:
+  raw_videos: "data/raw"
+  frames: "data/images"
+  yolo_labels: "data/labels"
+  meta: "data/meta"
+  runs: "runs"
+defaults:
+  fps_sample: 10             # frames per second when extracting
+  image_size: 1280           # YOLO inference image size
+  conf_thresh: 0.25
+  iou_thresh_track: 0.5
+  max_assign_dist: 120.0     # pixels, for simple tracker
