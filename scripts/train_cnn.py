@@ -13,7 +13,7 @@ from Football_Play_Project.cnn.model import PlayCNN
 
 def main():
     ap = argparse.ArgumentParser(description="Train CNN to predict plays from pre-snap structure.")
-    ap.add_argument("--meta", default="data/meta/game1_people_formations.json",
+    ap.add_argument("--meta", default="data/meta/plays_meta_full.json",
                     help="Meta JSON with roles/formations.")
     ap.add_argument("--labels", default="data/meta/play_labels.csv",
                     help="CSV with key_frame_idx,play_label.")
