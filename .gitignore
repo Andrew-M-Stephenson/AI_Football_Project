@@ -8,7 +8,6 @@ __pycache__/
 *.pyc
 
 # Ignore large raw data and video files
-data/raw/
 *.mp4
 *.avi
 
