@@ -3,8 +3,9 @@
 ### THIS IS A MULTISTAGE PROJECT, ALMOST 200 PICTURES WERE TRAINED HERE ###
 ### PRETRAINED DATA IS PRESENT. RUNNING STAGES 1 AND 2 MAY REPLACE JSON DATA ###
 
-## Activate .venv ##
+## Make and activate .venv ##
 
+python -m venv .venv
 .venv\Scripts\Activate.ps1
 
 ---------------------------------
