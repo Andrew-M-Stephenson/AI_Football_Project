@@ -47,6 +47,12 @@ python scripts/predict_cnn.py
 
 -------------------------------------------
 
+## Download Demo_1 video and insert it in ./data/raw ##
+
+https://drive.google.com/file/d/19jeiR-ckQc0UPnLFapW4N1NoUV46-OwJ/view?usp=sharing
+
+----------------------------------------------
+
 ## FINAL: Run the final model on one of the videos ##
 
 python scripts/realtime_play_predict.py
