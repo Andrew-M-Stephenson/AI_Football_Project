@@ -7,7 +7,7 @@ from ultralytics import YOLO
 
 ROOT_DIR_DEFAULT = "data/images/Plays"
 OUTPUT_PATH_DEFAULT = "data/meta/plays_detections.json"
-MODEL_PATH_DEFAULT = "yolov8n.pt"  # you can switch to yolov8m.pt or yolov8x.pt if you want
+MODEL_PATH_DEFAULT = "yolov8n.pt"
 
 
 def main():
@@ -47,13 +47,12 @@ def main():
     model = YOLO(args.model)
     detections = {}
 
-    # Collect all images under root (recursive)
+    #collect all imgs
     image_files = []
     for root, _, files in os.walk(args.root):
         for f in files:
             if f.lower().endswith((".jpg", ".png", ".jpeg")):
                 full_path = os.path.join(root, f)
-                # store as path relative to ROOT (e.g. "Deep_Pass/img001.jpg")
                 rel_path = os.path.relpath(full_path, args.root)
                 image_files.append((rel_path, full_path))
 
@@ -64,13 +63,12 @@ def main():
     print(f"[INFO] Found {len(image_files)} images under {args.root}")
 
     for rel_path, full_path in sorted(image_files):
-        # COCO class 0 = person
         results = model(
             full_path,
             imgsz=args.imgsz,
             conf=args.conf,
             iou=0.5,
-            classes=[0],
+            classes=[0],    #person class
         )
 
         dets = []

@@ -14,7 +14,7 @@ def collect_images(root):
         for f in files:
             if f.lower().endswith((".jpg", ".jpeg", ".png")):
                 full_path = os.path.join(r, f)
-                rel_path = os.path.relpath(full_path, root)  # e.g. "Deep_Pass/img001.jpg"
+                rel_path = os.path.relpath(full_path, root)
                 image_files.append((rel_path, full_path))
     return sorted(image_files)
 
@@ -34,7 +34,6 @@ def main():
         "  - Q or ESC: quit early (saves progress so far)\n"
     )
 
-    # Load existing LOS (if resuming)
     if os.path.exists(OUTPUT_PATH):
         with open(OUTPUT_PATH) as f:
             los_data = json.load(f)
@@ -71,7 +70,6 @@ def main():
         while True:
             vis = img.copy()
 
-            # Draw current points
             if len(points) == 2:
                 cv2.line(vis, points[0], points[1], (255, 0, 0), 2)
             elif existing and len(points) == 0:
@@ -82,8 +80,7 @@ def main():
             cv2.imshow(window_name, vis)
             key = cv2.waitKey(50) & 0xFF
 
-            if key in (ord("q"), 27):  # Q or ESC
-                # Save progress and quit
+            if key in (ord("q"), 27):
                 os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
                 with open(OUTPUT_PATH, "w") as f:
                     json.dump(los_data, f, indent=4)
@@ -116,7 +113,6 @@ def main():
         cv2.destroyWindow(window_name)
         idx += 1
 
-    # Finished all images
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w") as f:
         json.dump(los_data, f, indent=4)

@@ -16,14 +16,13 @@ def draw_frame(img, frame):
     """
     vis = img.copy()
 
-    # Draw LOS if available
     los = frame.get("los")
     if los and "p1" in los and "p2" in los:
         p1 = tuple(los["p1"])
         p2 = tuple(los["p2"])
-        cv2.line(vis, p1, p2, (255, 0, 0), 2)  # blue LOS
+        cv2.line(vis, p1, p2, (255, 0, 0), 2)  #blue LOS
 
-    # Draw boxes
+    #draw boxes
     detections = frame.get("detections", [])
     for i, d in enumerate(detections):
         x1, y1, x2, y2 = map(int, d["box"])
@@ -91,7 +90,6 @@ def main():
 
         vis = draw_frame(img, frame)
 
-        # Add overlay text (idx, fname, #dets, LOS yes/no)
         overlay = vis.copy()
         dets = frame.get("detections", [])
         has_los = frame.get("los") is not None
@@ -111,14 +109,13 @@ def main():
         cv2.imshow(win_name, vis)
         key = cv2.waitKey(0) & 0xFF
 
-        if key in (ord("q"), 27):  # q or ESC
+        if key in (ord("q"), 27):  
             break
-        elif key in (ord("d"), ord("D"), 83):  # right
+        elif key in (ord("d"), ord("D"), 83):
             i += 1
-        elif key in (ord("a"), ord("A"), 81):  # left
+        elif key in (ord("a"), ord("A"), 81):
             i -= 1
         else:
-            # anything else: go to next
             i += 1
 
     cv2.destroyAllWindows()

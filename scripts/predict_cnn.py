@@ -7,7 +7,7 @@ import os
 import torch
 
 from Football_Play_Project.cnn.model import PlayCNN
-from Football_Play_Project.cnn.dataset import ROLE_ORDER  # same roles as training: ["QB","RB","WR","OL","DEF"]
+from Football_Play_Project.cnn.dataset import ROLE_ORDER
 
 
 def load_meta(meta_path):
@@ -16,11 +16,6 @@ def load_meta(meta_path):
 
 
 def role_one_hot(role: str):
-    """
-    Same behavior as in PlayDataset:
-      - ROLE_ORDER e.g. ["QB","RB","WR","OL","DEF"]
-      - Anything not in ROLE_ORDER becomes "DEF" (defense fallback)
-    """
     role = role or "DEF"
     if role not in ROLE_ORDER:
         role = "DEF"
@@ -31,19 +26,12 @@ def role_one_hot(role: str):
 
 
 def frame_to_tensor(frame, img_root, max_players: int):
-    """
-    Build the same tensor as in PlayDataset:
-      X: [max_players, feature_dim]
-    using only offensive players, sorted left->right.
-    """
-    # Load image to get actual width/height
     fname = frame["fname"]
     import cv2
 
     full_path = os.path.join(img_root, fname)
     img = cv2.imread(full_path)
     if img is None:
-        # fallback: approximate from boxes
         W, H = 1920, 1080
     else:
         H, W = img.shape[:2]
@@ -59,7 +47,7 @@ def frame_to_tensor(frame, img_root, max_players: int):
         cx = 0.5 * (x1 + x2) / (W + 1e-6)
         cy = 0.5 * (y1 + y2) / (H + 1e-6)
 
-        side_lr_val = 0.0 if cx < 0.5 else 1.0  # left vs right half
+        side_lr_val = 0.0 if cx < 0.5 else 1.0
 
         role = d.get("role_pos", None)
         role_vec = role_one_hot(role)
@@ -71,10 +59,9 @@ def frame_to_tensor(frame, img_root, max_players: int):
     import torch as th
 
     if not players:
-        # no offense players? return zeros
         return th.zeros(max_players, 3 + len(ROLE_ORDER), dtype=th.float32)
 
-    players.sort(key=lambda f: f[0])  # sort by cx (left -> right)
+    players.sort(key=lambda f: f[0])
     feat_dim = len(players[0])
     X = np.zeros((max_players, feat_dim), dtype=np.float32)
     n = min(len(players), max_players)
@@ -97,7 +84,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    # 1) Load checkpoint
+    #load checkpoint
     ckpt = torch.load(args.ckpt, map_location=device)
     label2idx = ckpt["label2idx"]
     idx2label = ckpt["idx2label"]
@@ -108,7 +95,7 @@ def main():
     print(f"Model expects feature_dim={feature_dim}, max_players={max_players}")
     print(f"ROLE_ORDER used at train time: {ROLE_ORDER}")
 
-    # 2) Build model
+    #build model
     model = PlayCNN(
         feature_dim=feature_dim,
         num_classes=len(idx2label),
@@ -117,7 +104,7 @@ def main():
     model.load_state_dict(ckpt["model_state"])
     model.eval()
 
-    # 3) Load meta & select frame
+    #Load meta & select frame
     meta = load_meta(args.meta)
     frames = meta.get("frames", [])
     if not frames:
@@ -131,9 +118,8 @@ def main():
     if frame is None:
         raise SystemExit(f"Frame idx={args.frame_idx} not found in meta.")
 
-    # 4) Build input tensor
     X = frame_to_tensor(frame, img_root=args.root, max_players=max_players)
-    X = X.unsqueeze(0).to(device)  # [1, max_players, feature_dim]
+    X = X.unsqueeze(0).to(device)
 
     if X.shape[2] != feature_dim:
         raise SystemExit(

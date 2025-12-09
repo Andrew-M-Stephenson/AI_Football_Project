@@ -12,7 +12,7 @@ def main():
     with open(args.log, "r", newline="") as f:
         r = csv.DictReader(f)
         for row in r:
-            # normalize fields
+            #normalize fields
             row["correct"] = int(row.get("correct","0") or 0)
             row["final_pred"] = row.get("final_pred","").strip()
             row["true_label"] = row.get("true_label","").strip()
@@ -22,12 +22,10 @@ def main():
         print("No rows in log.")
         return
 
-    # overall
     correct = sum(r["correct"] for r in rows)
     print(f"Total samples: {len(rows)}")
     print(f"Overall accuracy: {correct/len(rows):.3f}")
 
-    # per-class (prefer true_label; fallback to final_pred)
     buckets = defaultdict(list)
     for r in rows:
         cls = r["true_label"] if r["true_label"] else r["final_pred"]

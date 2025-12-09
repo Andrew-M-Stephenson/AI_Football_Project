@@ -10,9 +10,9 @@ from datetime import datetime
 from ultralytics import YOLO
 
 from Football_Play_Project.cnn.model import PlayCNN
-from Football_Play_Project.cnn.dataset import ROLE_ORDER  # ["QB","RB","WR","OL","DEF"]
+from Football_Play_Project.cnn.dataset import ROLE_ORDER
 
-# ---------- helpers ----------
+#helper functions
 def role_one_hot(role: str):
     role = role or "DEF"
     if role not in ROLE_ORDER:
@@ -141,10 +141,9 @@ def append_log(log_path: str, row: dict):
         ])
 
 def crop_around_los_mask(shape, los_line, pad=40):
-    """Binary mask around the LOS segment (thick band)."""
     H,W = shape[:2]
     mask = np.zeros((H,W), dtype=np.uint8)
-    if los_line is None: 
+    if los_line is None:
         mask[:] = 255
         return mask
     p1 = np.array(los_line["p1"], dtype=np.int32)
@@ -153,18 +152,17 @@ def crop_around_los_mask(shape, los_line, pad=40):
     if np.linalg.norm(v) < 1:
         mask[:] = 255
         return mask
-    # build a quad around the line
     v = v / (np.linalg.norm(v) + 1e-6)
-    n = np.array([-v[1], v[0]])  # unit normal
+    n = np.array([-v[1], v[0]])
     a = p1 + n*pad; b = p1 - n*pad; c = p2 - n*pad; d = p2 + n*pad
     poly = np.array([a,b,c,d], dtype=np.int32)
     cv2.fillConvexPoly(mask, poly, 255)
     return mask
 
-# ---------- main ----------
+#main
 def main():
     ap = argparse.ArgumentParser(description="Real-time play prediction with finalization + feedback logging.")
-    ap.add_argument("--video", default="data/raw/Full_Game_Plays.mp4")
+    ap.add_argument("--video", default="data/raw/Demo_1.mp4")
     ap.add_argument("--yolo", default="yolov8n.pt")
     ap.add_argument("--ckpt", default="runs/cnn/model.pt")
     ap.add_argument("--imgsz", type=int, default=1280)
@@ -177,7 +175,6 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # YOLO + CNN (same as your existing file)  ────────────────────────────────
     yolo = YOLO(args.yolo)
     ckpt = torch.load(args.ckpt, map_location=device)
     idx2label = ckpt["idx2label"]
@@ -187,24 +184,25 @@ def main():
     model.load_state_dict(ckpt["model_state"])
     model.eval()
 
-    # Video
     cap = cv2.VideoCapture(int(args.video) if args.video.isdigit() else args.video)
     if not cap.isOpened():
         raise SystemExit(f"Could not open video: {args.video}")
 
-    # State
+    show_boxes = True
+    show_pred  = True
+
+    #state
     los_line = None
     click_points = []
     paused = False
     last_frame = None
     last_gray = None
-    final_pred = None          # locked label string
+    final_pred = None
     final_top_prob = None
-    final_method = None        # "manual" or "auto"
-    selected_true_label = ""   # optional ground truth chosen via 1/2/3/4
+    final_method = None
+    selected_true_label = ""
     frame_idx = 0
 
-    # UI
     def on_mouse(event, x, y, flags, param):
         nonlocal click_points, los_line
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -236,12 +234,12 @@ def main():
         H, W = frame.shape[:2]
         vis = frame.copy()
 
-        # LOS line
+        #los
         if los_line is not None:
             p1 = tuple(los_line["p1"]); p2 = tuple(los_line["p2"])
             cv2.line(vis, p1, p2, (255, 0, 0), 2)
 
-        # YOLO people
+        #yolo
         results = yolo.predict(source=frame, imgsz=args.imgsz, conf=args.conf, iou=0.5, classes=[0], verbose=False)
         dets = []
         r = results[0]
@@ -249,11 +247,13 @@ def main():
             for box in r.boxes.xyxy:
                 x1, y1, x2, y2 = map(float, box[:4])
                 dets.append({"box": [x1, y1, x2, y2]})
-        for d in dets:
-            x1, y1, x2, y2 = map(int, d["box"])
-            cv2.rectangle(vis, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-        # Prediction
+        if show_boxes:
+            for d in dets:
+                x1, y1, x2, y2 = map(int, d["box"])
+                cv2.rectangle(vis, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        #predict
         probs = None; pred_idx = None; pred_label = None
         if los_line is not None and dets:
             X = build_features_from_dets(dets, los_line, frame.shape, max_players, feature_dim_hint=feature_dim).to(device)
@@ -264,7 +264,7 @@ def main():
                     pred_idx = int(np.argmax(probs))
                     pred_label = idx2label[pred_idx]
 
-        # Motion detector (auto finalization)
+        #motion detect
         if args.auto_snap and final_pred is None and los_line is not None:
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             if last_gray is not None:
@@ -279,32 +279,34 @@ def main():
                     print(f"[FINAL][AUTO] {final_pred} (p={final_top_prob:.3f}) at frame {frame_idx}")
             last_gray = gray
 
-        # Overlay HUD
+        #hud
         overlay = vis.copy()
-        cv2.rectangle(overlay, (0, 0), (W, 120), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.5, vis, 0.5, 0, vis)
+        if show_pred:
+            cv2.rectangle(overlay, (0, 0), (W, 120), (0, 0, 0), -1)
+            cv2.addWeighted(overlay, 0.5, vis, 0.5, 0, vis)
 
-        status = "PAUSED" if paused else "PLAYING"
-        headline = f"{status}"
-        if pred_label:
-            headline += f" | Pred: {pred_label}"
-        if final_pred:
-            headline += f" | FINAL: {final_pred} ({final_method})"
-        cv2.putText(vis, headline, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+            status = "PAUSED" if paused else "PLAYING"
+            headline = f"{status}"
+            if pred_label:
+                headline += f" | Pred: {pred_label}"
+            if final_pred:
+                headline += f" | FINAL: {final_pred} ({final_method})"
+            cv2.putText(vis, headline, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
 
-        # Show probs
-        y0 = 60
-        if probs is not None:
-            for i, lbl in enumerate(idx2label):
-                p = float(probs[i])
-                cv2.putText(vis, f"{lbl}: {p:.2f}", (10, y0),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6,
-                            (0, 255, 0) if pred_idx == i else (200, 200, 200), 1)
-                y0 += 18
+            y0 = 60
+            if probs is not None:
+                for i, lbl in enumerate(idx2label):
+                    p = float(probs[i])
+                    cv2.putText(vis, f"{lbl}: {p:.2f}", (10, y0),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                                (0, 255, 0) if pred_idx == i else (200, 200, 200), 1)
+                    y0 += 18
 
-        # Controls
-        cv2.putText(vis, "Keys: P=pause | L=set LOS | F=finalize | U=unfinalize | Y/N=correct? | 1-4=true label | Q=quit",
-                    (10, y0+10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (180, 220, 255), 1)
+            cv2.putText(vis, "Keys: P=pause | L=set LOS | F=finalize | U=unfinalize | H=toggle HUD/boxes | Y/N=correct? | 1-4=true label | Q=quit",
+                        (10, y0+10), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (180, 220, 255), 1)
+        else:
+            cv2.putText(vis, "HUD OFF (H to toggle) | P pause | L set LOS | F finalize | U unfinalize | Q quit",
+                        (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (180, 220, 255), 2)
 
         cv2.imshow("Real-time Play Prediction", vis)
         key = cv2.waitKey(30 if paused else 1) & 0xFF
@@ -326,6 +328,10 @@ def main():
         elif key in (ord("u"), ord("U")):
             final_pred = None; final_top_prob = None; final_method = None; selected_true_label = ""
             print("[FINAL] cleared.")
+        elif key in (ord("h"), ord("H")):
+            show_boxes = not show_boxes
+            show_pred  = not show_pred
+            print(f"[TOGGLE] show_boxes={show_boxes} | show_pred={show_pred}")
         elif key in (ord("y"), ord("Y")):
             if final_pred:
                 append_log(args.log_csv, {
@@ -351,7 +357,6 @@ def main():
                 })
                 print("[LOG] recorded: correct=0")
         elif key in (ord("1"), ord("2"), ord("3"), ord("4")):
-            # Set an optional true label for this snap (useful for per-true-class accuracy)
             idx = key - ord("1")
             if 0 <= idx < len(idx2label):
                 selected_true_label = idx2label[idx]

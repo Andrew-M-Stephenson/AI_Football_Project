@@ -30,14 +30,12 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    # 1) Dataset
     dataset = PlayDataset(
         meta_path=args.meta,
         labels_csv=args.labels,
         max_players=args.max_players,
     )
 
-    # Train/val split
     n_total = len(dataset)
     n_val = int(max(1, round(args.val_frac * n_total))) if n_total > 4 else 1
     n_train = n_total - n_val
@@ -50,7 +48,6 @@ def main():
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False)
 
-    # 2) Model
     model = PlayCNN(
         feature_dim=dataset.feature_dim,
         num_classes=dataset.num_classes,
@@ -60,7 +57,6 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
-    # 3) Training loop
     best_val_acc = 0.0
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -89,7 +85,6 @@ def main():
         train_loss = total_loss / max(total_samples, 1)
         train_acc = total_correct / max(total_samples, 1)
 
-        # ----- validation -----
         model.eval()
         val_correct = 0
         val_total = 0
@@ -110,7 +105,7 @@ def main():
             f"val_acc={val_acc:.3f}"
         )
 
-        # Save best model
+        #save best model
         if val_acc >= best_val_acc:
             best_val_acc = val_acc
             ckpt_path = out_dir / "model.pt"

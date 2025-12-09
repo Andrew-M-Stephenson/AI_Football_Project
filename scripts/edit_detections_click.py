@@ -16,12 +16,10 @@ def draw_boxes(img, boxes, roles, keep_flags):
         x1, y1, x2, y2 = map(int, d["bbox"])
 
         kept = keep_flags[i]
-        # green = keep, red = delete
         color = (0, 255, 0) if kept else (0, 0, 255)
         thickness = 2
 
         cv2.rectangle(vis, (x1, y1), (x2, y2), color, thickness)
-        # index label
         cv2.putText(
             vis,
             str(i),
@@ -31,7 +29,6 @@ def draw_boxes(img, boxes, roles, keep_flags):
             (255, 255, 255),
             1,
         )
-        # role label (if any)
         role = roles.get(str(i)) or roles.get(i)
         if role:
             cv2.putText(
@@ -91,7 +88,7 @@ def main():
     i_img = 0
 
     while 0 <= i_img < len(keys):
-        rel_path = keys[i_img]  # e.g. "Deep_Pass/img001.jpg"
+        rel_path = keys[i_img]
         full_path = os.path.join(args.root, rel_path)
 
         img = cv2.imread(full_path)
@@ -113,7 +110,7 @@ def main():
         def on_mouse(event, x, y, flags, param):
             nonlocal keep_flags
             if event == cv2.EVENT_LBUTTONDOWN:
-                # find first box containing this point
+                #find first box containing point
                 for idx, d in enumerate(boxes):
                     x1, y1, x2, y2 = d["bbox"]
                     if x1 <= x <= x2 and y1 <= y <= y2:
@@ -146,37 +143,34 @@ def main():
             cv2.imshow(win_name, vis)
             key = cv2.waitKey(50) & 0xFF
 
-            if key in (ord("q"), 27):  # q or ESC
-                # save current frame changes then write files and quit
+            if key in (ord("q"), 27):
+                #save current frame changes then write files and quit
                 _save_frame(rel_path, boxes, keep_flags, roles, dets_data, positions_data)
                 _write_files(args.dets, args.pos, dets_data, positions_data)
                 cv2.destroyAllWindows()
                 print(f"[DONE] Saved and quit.")
                 return
 
-            elif key in (ord("d"), ord("D"), 83):  # right / D
+            elif key in (ord("d"), ord("D"), 83):
                 _save_frame(rel_path, boxes, keep_flags, roles, dets_data, positions_data)
                 i_img += 1
                 break
 
-            elif key in (ord("a"), ord("A"), 81):  # left / A
+            elif key in (ord("a"), ord("A"), 81):
                 _save_frame(rel_path, boxes, keep_flags, roles, dets_data, positions_data)
                 i_img -= 1
                 break
 
         cv2.destroyWindow(win_name)
 
-    # finished all images
     _write_files(args.dets, args.pos, dets_data, positions_data)
     print(f"[DONE] Finished all images and saved updated JSONs.")
 
 
 def _save_frame(rel_path, boxes, keep_flags, roles, dets_data, positions_data):
     """Apply keep_flags to boxes and roles for a single image."""
-    # 1) filter boxes
     filtered_boxes = [b for k, b in zip(keep_flags, boxes) if k]
 
-    # 2) remap roles: old_idx -> new_idx
     roles_old = {}
     for k, v in roles.items():
         try:

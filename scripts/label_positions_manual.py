@@ -5,10 +5,9 @@ import json
 import os
 
 IMAGES_ROOT = "data/images/Plays"
-DETECTIONS_PATH = "data/meta/plays_detections.json"   # cleaned detections
+DETECTIONS_PATH = "data/meta/plays_detections.json"
 OUTPUT_PATH = "data/meta/plays_positions.json"
 
-# Roles we care about
 ROLES = ["QB", "RB", "WR", "OL", "DEF"]
 
 ROLE_KEYS = {
@@ -21,21 +20,18 @@ ROLE_KEYS = {
 
 
 def draw_frame(img, boxes, roles, current_idx):
-    """Draw detections + current role labels."""
     vis = img.copy()
 
     for i, d in enumerate(boxes):
         x1, y1, x2, y2 = map(int, d["bbox"])
-        # Highlight selected box
         if i == current_idx:
-            color = (0, 0, 255)  # red
+            color = (0, 0, 255)  
             thickness = 3
         else:
-            color = (0, 255, 0)  # green
+            color = (0, 255, 0)  
             thickness = 2
 
         cv2.rectangle(vis, (x1, y1), (x2, y2), color, thickness)
-        # Index label
         cv2.putText(
             vis,
             str(i),
@@ -45,7 +41,6 @@ def draw_frame(img, boxes, roles, current_idx):
             (255, 255, 255),
             1,
         )
-        # Role label (if assigned)
         role = roles.get(i)
         if role:
             cv2.putText(
@@ -87,12 +82,12 @@ def main():
         "  - Q or ESC: save everything and quit\n"
     )
 
-    cached_roles = {}  # rel_path -> {box_index: role}
+    cached_roles = {}
     i_img = 0
     win_name = "Label Positions"
 
     while 0 <= i_img < len(keys):
-        rel_path = keys[i_img]          # e.g. "Deep_Pass/img001.jpg"
+        rel_path = keys[i_img]
         full_path = os.path.join(IMAGES_ROOT, rel_path)
 
         img = cv2.imread(full_path)
@@ -117,8 +112,7 @@ def main():
             cv2.imshow(win_name, vis)
             key = cv2.waitKey(50) & 0xFF
 
-            if key in (ord("q"), 27):  # q or ESC
-                # Save progress and quit
+            if key in (ord("q"), 27):
                 cached_roles[rel_path] = roles_for_frame
                 os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
                 with open(OUTPUT_PATH, "w") as f:
@@ -127,26 +121,25 @@ def main():
                 cv2.destroyAllWindows()
                 return
 
-            # Move between boxes
-            elif key in (ord("d"), ord("D"), 83):  # right / D
+            elif key in (ord("d"), ord("D"), 83):
                 current_idx = (current_idx + 1) % len(boxes)
-            elif key in (ord("a"), ord("A"), 81):  # left / A
+            elif key in (ord("a"), ord("A"), 81):
                 current_idx = (current_idx - 1) % len(boxes)
 
-            # Assign role
+            #assign role
             elif key in ROLE_KEYS:
                 role = ROLE_KEYS[key]
                 roles_for_frame[current_idx] = role
                 print(f"[{rel_path}] Box {current_idx} -> {role}")
 
-            # Save and next image
+            #save and next image
             elif key in (ord("s"), ord("S")):
                 cached_roles[rel_path] = roles_for_frame
                 print(f"[INFO] Saved labels for {rel_path}")
                 i_img += 1
                 break
 
-            # Save and previous image
+            #save and previous image
             elif key in (ord("b"), ord("B")):
                 cached_roles[rel_path] = roles_for_frame
                 print(f"[INFO] Saved labels for {rel_path}, going back")
@@ -155,7 +148,6 @@ def main():
 
         cv2.destroyWindow(win_name)
 
-    # Finished all images: save final labels
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w") as f:
         json.dump(cached_roles, f, indent=4)

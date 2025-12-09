@@ -1,37 +1,86 @@
+<------------------- RUNNING THE PROJECT ------------------>
+
+### THIS IS A MULTISTAGE PROJECT, ALMOST 200 PICTURES WERE TRAINED HERE ###
+### PRETRAINED DATA IS PRESENT. RUNNING STAGES 1 AND 2 MAY REPLACE JSON DATA ###
+
 ## Activate .venv ##
 
 .venv\Scripts\Activate.ps1
 
 ---------------------------------
 
-Download yolov8n.pt
+## Download dependencies and models from requirements.txt ##
+
+pip install -r requirements.txt
 
 ---------------------------------
 
+## Stage 1: Run yolo model on custom dataset to get bounding boxes in json files ##
+
+python scripts/detect_players_yolo.py
+
+(This will run the yolo model on all of the images to create bounding boxes for the players. This is 
+the first stage, but will need to be manually filtered)
+
+----------------------------------------
+
+## Stage 2: Edit detections, assign positions, and mark the line of scrimmage ##
+
+python scripts/edit_detections_click.py
+python scripts/label_positions_manual.py
+python scripts/mark_los_manual.py
+
+----------------------------------------
+
+## Visualize detections and build the final json files for the model ##
+
+python scripts/visualize_detections.py
+python scripts/build_meta_with_los.py
+
+-------------------------------------------
+
+## Stage 3: Train and run the CNN model ##
+
+python scripts/train_cnn.py
+python scripts/predict_cnn.py
+
+-------------------------------------------
+
+## FINAL: Run the final model on one of the videos ##
+
+python scripts/realtime_play_predict.py
+
+(Pause with "P", and set the line of scrimmage by pressing "L", then click the two endpoints, 
+to see prediction. Unpause to see it play out. Options to label as success or failure. Finishing
+the script will make files for "compute accuracy.py" to organize)
+
+-----------------------------------
+
 1. Big-picture pipeline
 
-Your project has three main components:
+Project has three main components:
 
-YOLO detector (Ultralytics Yolov8n)
+[1] YOLO detector
 
-Detects all people on each frame.
+- Detects all people on each frame.
 
-Geometry + manual labels
+[3] Geometry + manual labels
 
-You clean up detections, draw the LOS, and label each player as QB / RB / WR / OL / DEF.
+- Cleans up detections, draw the LOS, and label each player as QB / RB / WR / OL / DEF.
 
-A meta builder combines all of that into a structured JSON.
+- A meta builder combines all of that into a structured JSON.
 
-CNN play predictor
+[3] CNN play predictor
 
-Takes the pre-snap layout (player positions + roles) and predicts one of your 4 play outcome classes
-(e.g. Deep_Pass, Short_Pass, Middle_Run, Outside_Run).
+- Takes the pre-snap layout and predicts one of 4 play outcome classes
 
-Plus:
+---------------------------------------------------
 
-A real-time script that runs YOLO + heuristics + CNN on a video, with you drawing the LOS on the fly.
+Extra:
 
-Everything in your repo is either:
+A real-time script that runs YOLO + heuristics + CNN on a video, with drawing the LOS on the fly.
+
+Everything in repo is either:
 
 Helping build the dataset (YOLO + LOS + positions → meta),
 
@@ -40,11 +89,12 @@ Training/evaluating the CNN, or
 Running the live demo.
 
 2. scripts/ – what each file does
-detect_players_yolo.py
 
-Purpose: Run YOLO on all your labeled play images and save raw detections.
+*** detect_players_yolo.py ***
 
-Rough behavior:
+Purpose: Run YOLO on all labeled play images and save raw detections.
+
+Behavior:
 
 Walks data/images/Plays/ recursively.
 Example layout:
@@ -77,11 +127,13 @@ Saves a JSON mapping:
 
 to data/meta/plays_detections.json.
 
-You ran this first to get detections before cleaning & labeling.
+Run this first to get detections before cleaning & labeling.
 
-visualize_detections.py
+------------------------------------------------------------
 
-Purpose: Visual sanity-check of YOLO detections.
+*** visualize_detections.py ***
+
+Purpose: Visual check of YOLO detections.
 
 Loads plays_detections.json.
 
@@ -103,9 +155,11 @@ A / ← : previous image
 
 Q / Esc : quit
 
-This is how you checked “are there really 60 people here?” and whether YOLO is doing something sensible before you start manual labeling.
+This is how to check “are there really 60 people here?” and whether YOLO is doing something sensible before starting manual labeling.
 
-edit_detections_click.py
+-------------------------------------------------------------
+
+*** edit_detections_click.py ***
 
 Purpose: Clean up noisy YOLO detections by clicking boxes to keep/remove.
 
@@ -121,25 +175,27 @@ green = keep
 
 red = delete
 
-When you move to the next/previous image, it:
+When moving to the next/previous image, it:
 
-Filters out boxes you marked red.
+Filters out boxes marked red.
 
-Writes the cleaned boxes back to JSON (plays_detections.json or the cleaned output you chose).
+Writes the cleaned boxes back to JSON
 
 Result: same JSON structure, but now only good player boxes remain, no random fans/sideline boxes.
 
-This is essential before you label roles, because you don’t want to waste time labeling boxes you’re just going to ignore.
+This is essential before  labeling roles, because don’t want to waste time labeling boxes that are just going to ignored.
 
-mark_los_manual.py (images LOS labeling)
+----------------------------------------------------------------
 
-Purpose: Let you manually draw the Line of Scrimmage for each image.
+*** mark_los_manual.py (images LOS labeling) ***
+
+Purpose: manually draw the Line of Scrimmage for each image.
 
 Walks through all images in data/images/Plays.
 
 For each image:
 
-You left-click two points along the LOS.
+Left-click two points along the LOS.
 
 It draws a line between those two points (usually slightly slanted).
 
@@ -156,9 +212,11 @@ Saves a JSON like:
 
 in data/meta/plays_los.json.
 
-This is how you give geometry context: which players are on/near the LOS vs in the backfield.
+This is how to give geometry context: which players are on/near the LOS vs in the backfield.
 
-label_positions_manual.py
+-------------------------------------------------------
+
+*** label_positions_manual.py ***
 
 Purpose: Manually assign positions to each player box: QB, RB, WR, OL, DEF.
 
@@ -170,9 +228,9 @@ Draws all boxes with indices.
 
 Highlights a “current box”.
 
-You move between boxes with A/D.
+Move between boxes with A/D.
 
-You press:
+Press:
 
 1 → label current box as QB
 
@@ -212,13 +270,15 @@ Saves a JSON:
 
 in data/meta/plays_positions.json.
 
-These are your ground-truth roles that the CNN uses as inputs (features).
+These are the ground-truth roles that the CNN uses as inputs (features).
 
-edit_detections_with_positions.py (newer tool – you kept edit_detections_click instead)
+-------------------------------------------------------------------------
 
-If you kept / use this: it’s like edit_detections_click.py but also keeps plays_positions.json in sync while you delete boxes.
+*** edit_detections_click.py ***
 
-When you delete a box (turn red), the script:
+Keeps plays_positions.json in sync while deleting boxes.
+
+When deleting a box (turn red), the script:
 
 Removes that box from plays_detections.json
 
@@ -226,9 +286,9 @@ Drops its role from plays_positions.json
 
 Reindexes the remaining boxes and roles
 
-You ended up using the simpler version (edit_detections_click) earlier, but this is the more “correct” one when you’re refining both detections and roles after-the-fact.
+--------------------------------------------------------------
 
-build_meta_with_los.py (your build_plays_meta_full script)
+*** build_meta_with_los.py ***
 
 Purpose: Combine detections, LOS, and positions into a single canonical meta JSON, plus a labels CSV.
 
@@ -236,7 +296,7 @@ It pulls from:
 
 plays_detections.json → cleaned boxes
 
-plays_positions.json → your QB/RB/WR/OL/DEF labels
+plays_positions.json → QB/RB/WR/OL/DEF labels
 
 plays_los.json → LOS line
 
@@ -280,11 +340,13 @@ key_frame_idx,play_label
 
 This is exactly what train_cnn.py reads as the label file.
 
-This script is the bridge between your labeling work and the neural network training.
+This script is the bridge between labeling work and the neural network training.
 
-train_cnn.py (in scripts/)
+-----------------------------------------------------------------
 
-Purpose: Train your CNN to map pre-snap formation → play outcome.
+*** train_cnn.py (in scripts/) ***
+
+Purpose: Train CNN to map pre-snap formation → play outcome.
 
 Parses arguments:
 
@@ -328,7 +390,7 @@ label2idx, idx2label (class names)
 
 feature_dim, max_players
 
-Training log you saw:
+Training log:
 
 ~177 plays
 
@@ -336,7 +398,9 @@ Training log you saw:
 
 Best val_acc ≈ 0.40 → better than random (0.25), so the model is learning real structure.
 
-predict_cnn.py
+---------------------------------------------
+
+*** predict_cnn.py ***
 
 Purpose: Test the CNN on a single labeled frame from plays_meta_full.json.
 
@@ -368,9 +432,11 @@ Predicted class label
 
 Probability for each class
 
-You use this to double-check that the model is doing something plausible on your training-style data.
+Use this to double-check that the model is doing something plausible on training-style data.
 
-realtime_play_predict.py
+-------------------------------------------------------
+
+*** realtime_play_predict.py ***
 
 Purpose: Run the full stack on a video: YOLO + LOS (manual) + role heuristics + CNN prediction, with pause.
 
@@ -384,13 +450,13 @@ Pause / resume
 
 P toggles paused state.
 
-When paused, it keeps reusing the same frame so you can draw LOS.
+When paused, it keeps reusing the same frame so LOS can be drawn.
 
 LOS interaction
 
 L clears current LOS.
 
-You click two points on the frame to set a new LOS line.
+Click two points on the frame to set a new LOS line.
 
 LOS is stored as {"p1": [x,y], "p2": [x,y]}.
 
@@ -428,7 +494,7 @@ Pad/truncate to max_players and shape [1, max_players, feature_dim].
 
 CNN prediction
 
-Uses the same PlayCNN you trained.
+Uses the same PlayCNN trained.
 
 If LOS + dets exist:
 
@@ -448,36 +514,42 @@ Shows class probabilities beneath.
 
 Q/Esc to quit.
 
-This script is how you demonstrate your “almost real-time” system: you pause at pre-snap, draw LOS, and see what the model thinks.
+This script is how to demonstrate “almost real-time” system: pause at pre-snap, draw LOS, and see what the model thinks.
 
 yolo_train.py / yolo_predict.py
 
 These are more generic YOLO helpers (less central now, but still useful).
 
-yolo_train.py
+------------------------------------------------------------------
+
+*** yolo_train.py ***
 
 Thin wrapper to call ultralytics.YOLO().train(...).
 
-Uses your dataset.yaml (if you set one up) to train a customized detector instead of plain yolov8n.pt.
+Uses dataset.yaml to train a customized detector instead of plain yolov8n.pt.
 
-yolo_predict.py
+------------------------------------------------------------------------
+
+*** yolo_predict.py ***
 
 General YOLO inference script (similar to detect_players_yolo.py but more generic).
 
 Used for quick “run YOLO on a video and save an annotated output”.
 
-Right now your core pipeline uses detect_players_yolo.py for dataset building, but yolo_predict.py is still handy for quick visualization.
+Right now core pipeline uses detect_players_yolo.py for dataset building, but yolo_predict.py is still handy for quick visualization.
 
-3. src/Football_Play_Project/cnn/ – your neural network code
+---------------------------------------------------------------------------
+
+3. src/Football_Play_Project/cnn/ – neural network code
 
 This is the library code for the CNN, used by both train_cnn.py and predict_cnn.py / realtime_play_predict.py.
 
-dataset.py
+*** dataset.py ***
 
 Defines:
 
 ROLE_ORDER = ["QB", "RB", "WR", "OL", "DEF"]
-→ This fixed order is how you map role strings to the one-hot vector.
+→ This fixed order is how to map role strings to the one-hot vector.
 
 PlayDataset (subclass of torch.utils.data.Dataset):
 
@@ -533,7 +605,9 @@ label2idx, idx2label, max_players
 
 This ensures training and prediction both see the same feature structure.
 
-model.py
+------------------------------------------------------
+
+*** model.py ***
 
 Defines the CNN architecture: PlayCNN.
 
@@ -567,16 +641,12 @@ So conceptually:
 
 “Look at the 1D sequence of offensive players and learn patterns that distinguish Deep_Pass from Short_Pass from Runs.”
 
-train_cnn.py (inside cnn/)
-
-This is an older in-package training script version. You’re primarily using scripts/train_cnn.py now, which does the same job but from the scripts/ folder.
-
-You can keep it as a reference or ignore it; the main training entrypoint is your scripts/train_cnn.py.
+---------------------------------------------------------------
 
 4. Other key files
 pyproject.toml
 
-Declares your project as a Python package:
+Declares project as a Python package:
 
 [project]
 name = "Football_Play_Project"
@@ -584,7 +654,7 @@ version = "0.1.0"
 dependencies = ["ultralytics", "torch", "opencv-python", ...]
 
 
-Lets you install in editable mode:
+Can install in editable mode:
 
 pip install -e .
 
@@ -597,7 +667,7 @@ Pretrained YOLOv8 nano model from Ultralytics.
 
 Detects generic “person” objects.
 
-You’re using it as:
+Using it as:
 
 A generic player detector (and manually cleaning).
 
