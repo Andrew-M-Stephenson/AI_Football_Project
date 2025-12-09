@@ -47,7 +47,7 @@ python scripts/predict_cnn.py
 
 -------------------------------------------
 
-## Download Demo_1 video and insert it in ./data/raw ##
+## Download Demo_1 video and insert it in ./data/raw if it isnt there ##
 
 https://drive.google.com/file/d/19jeiR-ckQc0UPnLFapW4N1NoUV46-OwJ/view?usp=sharing
 
